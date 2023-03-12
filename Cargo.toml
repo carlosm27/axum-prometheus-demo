@@ -1,0 +1,14 @@
+[package]
+name = "axum-prometheus"
+version = "0.1.0"
+edition = "2021"
+
+# See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
+
+[dependencies]
+axum = "0.6.10"
+metrics = "0.18"
+metrics-exporter-prometheus = "0.8"
+tokio = { version = "1.26", features = ["full"] }
+tracing = "0.1.36"
+tracing-subscriber = { version = "0.3.16", features = ["env-filter"] }
