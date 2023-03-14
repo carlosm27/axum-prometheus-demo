@@ -13,15 +13,25 @@ use std::{
     time::{Duration, Instant},
 };
 use tracing_subscriber::{layer::SubscriberExt, util::SubscriberInitExt};
+use tower_http::trace::{self, TraceLayer};
+use tracing::Level;
 
 fn metrics_app() -> Router {
+    
+
     let recorder_handle = setup_metrics_recorder();
-    Router::new().route("/metrics", get(move || ready(recorder_handle.render())))
+    Router::new()
+        .route("/metrics", get(move || ready(recorder_handle.render())))
+        
 }
 
 fn main_app() -> Router {
+    tracing_subscriber::registry()
+        .with(tracing_subscriber::fmt::layer())
+        .init();
+
     Router::new()
-        .route("/fast", get(|| async {"This endpoint is FAST!"}))
+        .route("/hello", get(|| async {"Hello World"}))
         .route(
             "/slow",
             get(|| async {
@@ -29,12 +39,17 @@ fn main_app() -> Router {
             }),
         )
         .route_layer(middleware::from_fn(track_metrics))
+        .layer(
+            TraceLayer::new_for_http()
+                .make_span_with(trace::DefaultMakeSpan::new().level(Level::INFO))
+                .on_response(trace::DefaultOnResponse::new().level(Level::INFO)),
+        )
 }
 
 async fn start_main_server() {
     let app = main_app();
 
-    let addr = SocketAddr::from(([127, 0, 0, 1], 3000));
+    let addr = SocketAddr::from(([127, 0, 0, 1], 4000));
     tracing::debug!("listening on {}", addr);
     axum::Server::bind(&addr)
         .serve(app.into_make_service())
@@ -56,13 +71,7 @@ async fn start_metrics_server() {
 
 #[tokio::main]
 async fn main() {
-    tracing_subscriber::registry()
-        .with(
-            tracing_subscriber::EnvFilter::try_from_default_env()
-                .unwrap_or_else(|_| "example_todos=debug,tower_http=debug".into()),
-        )
-        .with(tracing_subscriber::fmt::layer())
-        .init();
+    
 
     // The `/metrics` endpoint should not be publicly available. If behind a reverse proxy, this
     // can be achieved by rejecting requests to `/metrics`. In this example, a second server is
